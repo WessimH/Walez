@@ -1,0 +1,5 @@
+{
+  "method": "GET",
+  "endpoint": "/countries/v5/names.common/France",
+  "requestBody": null
+}
