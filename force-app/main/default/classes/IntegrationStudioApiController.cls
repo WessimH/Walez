@@ -11,13 +11,22 @@ global with sharing class IntegrationStudioApiController {
                 RequestPayload.class
             );
         } catch (Exception e) {
-            throw new ApiException('Le contenu de la requête est invalide.');
+            throw new ApiException(
+                'Le contenu de la requête est invalide.'
+            );
+        }
+
+        if (payload == null) {
+            throw new ApiException(
+                'Le contenu de la requête est vide.'
+            );
         }
 
         return sendRequest(
             payload.method,
             payload.endpoint,
-            payload.requestBody
+            payload.requestBody,
+            payload.requestHeaders
         );
     }
 
@@ -26,12 +35,30 @@ global with sharing class IntegrationStudioApiController {
         String endpoint,
         String requestBody
     ) {
+        return sendRequest(
+            method,
+            endpoint,
+            requestBody,
+            null
+        );
+    }
+
+    public static ApiResponse sendRequest(
+        String method,
+        String endpoint,
+        String requestBody,
+        Map<String, String> requestHeaders
+    ) {
         if (String.isBlank(method)) {
-            throw new ApiException('La méthode HTTP est obligatoire.');
+            throw new ApiException(
+                'La méthode HTTP est obligatoire.'
+            );
         }
 
         if (String.isBlank(endpoint)) {
-            throw new ApiException('Le endpoint est obligatoire.');
+            throw new ApiException(
+                'Le endpoint est obligatoire.'
+            );
         }
 
         String normalizedMethod = method.trim().toUpperCase();
@@ -46,7 +73,9 @@ global with sharing class IntegrationStudioApiController {
         };
 
         if (!allowedMethods.contains(normalizedMethod)) {
-            throw new ApiException('Méthode HTTP non autorisée.');
+            throw new ApiException(
+                'Méthode HTTP non autorisée.'
+            );
         }
 
         if (!normalizedEndpoint.startsWith('/')) {
@@ -54,19 +83,41 @@ global with sharing class IntegrationStudioApiController {
         }
 
         HttpRequest request = new HttpRequest();
+
         request.setEndpoint(
             'callout:REST_Countries' + normalizedEndpoint
         );
         request.setMethod(normalizedMethod);
         request.setTimeout(30000);
-        request.setHeader('Accept', 'application/json');
+
+        applyRequestHeaders(
+            request,
+            requestHeaders
+        );
+
+        if (!containsHeader(requestHeaders, 'Accept')) {
+            request.setHeader(
+                'Accept',
+                'application/json'
+            );
+        }
 
         if (
             !String.isBlank(requestBody) &&
-            new Set<String>{ 'POST', 'PUT', 'PATCH' }
-                .contains(normalizedMethod)
+            methodAllowsBody(normalizedMethod)
         ) {
-            request.setHeader('Content-Type', 'application/json');
+            if (
+                !containsHeader(
+                    requestHeaders,
+                    'Content-Type'
+                )
+            ) {
+                request.setHeader(
+                    'Content-Type',
+                    'application/json'
+                );
+            }
+
             request.setBody(requestBody);
         }
 
@@ -77,10 +128,11 @@ global with sharing class IntegrationStudioApiController {
             result.statusCode = response.getStatusCode();
             result.status = response.getStatus();
             result.body = response.getBody();
-            result.contentType = response.getHeader('Content-Type');
+            result.contentType = response.getHeader(
+                'Content-Type'
+            );
 
             return result;
-
         } catch (CalloutException e) {
             throw new ApiException(
                 'Échec du callout : ' + e.getMessage()
@@ -88,10 +140,93 @@ global with sharing class IntegrationStudioApiController {
         }
     }
 
+    private static void applyRequestHeaders(
+        HttpRequest request,
+        Map<String, String> requestHeaders
+    ) {
+        if (requestHeaders == null) {
+            return;
+        }
+
+        Set<String> protectedHeaders = new Set<String>{
+            'authorization',
+            'host',
+            'content-length'
+        };
+
+        for (String headerName : requestHeaders.keySet()) {
+            if (String.isBlank(headerName)) {
+                continue;
+            }
+
+            String normalizedHeaderName =
+                headerName.trim();
+
+            String normalizedHeaderNameLower =
+                normalizedHeaderName.toLowerCase();
+
+            if (
+                protectedHeaders.contains(
+                    normalizedHeaderNameLower
+                )
+            ) {
+                continue;
+            }
+
+            String headerValue =
+                requestHeaders.get(headerName);
+
+            if (headerValue == null) {
+                continue;
+            }
+
+            request.setHeader(
+                normalizedHeaderName,
+                headerValue
+            );
+        }
+    }
+
+    private static Boolean containsHeader(
+        Map<String, String> requestHeaders,
+        String expectedHeaderName
+    ) {
+        if (
+            requestHeaders == null ||
+            String.isBlank(expectedHeaderName)
+        ) {
+            return false;
+        }
+
+        for (String headerName : requestHeaders.keySet()) {
+            if (
+                !String.isBlank(headerName) &&
+                headerName.trim().equalsIgnoreCase(
+                    expectedHeaderName
+                )
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static Boolean methodAllowsBody(
+        String method
+    ) {
+        return new Set<String>{
+            'POST',
+            'PUT',
+            'PATCH'
+        }.contains(method);
+    }
+
     global class RequestPayload {
         public String method;
         public String endpoint;
         public String requestBody;
+        public Map<String, String> requestHeaders;
     }
 
     global class ApiResponse {

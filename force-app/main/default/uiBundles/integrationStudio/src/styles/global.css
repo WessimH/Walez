@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@import "@xyflow/react/dist/style.css";
+
 @layer base {
   html,
   body,
@@ -132,4 +134,49 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 700ms ease-out both;
+}
+
+.animate-fade-in {
+  animation: fade-in 900ms ease-out both;
+}
+
+.animate-float-soft {
+  animation: float-soft 5s ease-in-out infinite;
 }

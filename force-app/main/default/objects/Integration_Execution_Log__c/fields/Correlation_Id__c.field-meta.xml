@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Correlation_Id__c</fullName>
+    <description>Identifiant commun permettant de suivre une exécution entre plusieurs systèmes.</description>
+    <label>Correlation ID</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

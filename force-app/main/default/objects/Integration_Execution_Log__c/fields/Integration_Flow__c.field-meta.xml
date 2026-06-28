@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Integration_Flow__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>Flux d’intégration concerné par cette exécution.</description>
+    <label>Integration Flow</label>
+    <referenceTo>Integration_Flow__c</referenceTo>
+    <relationshipLabel>Execution Logs</relationshipLabel>
+    <relationshipName>Execution_Logs</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

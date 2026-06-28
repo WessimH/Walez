@@ -6,6 +6,7 @@ import {
   KeyRound,
   Radio,
   Settings,
+  Workflow,
   Zap
 } from "lucide-react";
 
@@ -49,6 +50,11 @@ const menu = [
     icon: Radio,
     label: "Platform Events",
     path: "/platform-events"
+  },
+  {
+  icon: Workflow,
+  label: "Integration Flows",
+  path: "/integration-flows"
   },
   {
     icon: Settings,

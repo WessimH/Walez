@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>Defines an integration flow displayed in Integration Studio.</description>
+    <enableActivities>false</enableActivities>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>true</enableHistory>
+    <enableReports>true</enableReports>
+    <label>Integration Flow</label>
+    <nameField>
+        <label>Integration Flow Name</label>
+        <type>Text</type>
+    </nameField>
+    <pluralLabel>Integration Flows</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+</CustomObject>
