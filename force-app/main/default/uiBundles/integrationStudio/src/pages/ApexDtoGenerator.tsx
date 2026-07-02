@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useReducer } from "react";
 import {
   Braces,
   Check,
@@ -8,6 +8,7 @@ import {
   Trash2,
   WandSparkles
 } from "lucide-react";
+import { mergeState } from "../utils/state";
 
 const DEFAULT_JSON = `{
   "name": "France",
@@ -488,18 +489,289 @@ function formatBytes(bytes: number): string {
   )} ${units[unitIndex]}`;
 }
 
+type ApexDtoState = {
+  className: string;
+  input: string;
+  output: string;
+  error: string;
+  copied: boolean;
+  useProperties: boolean;
+};
+
+const initialApexDtoState: ApexDtoState = {
+  className: "CountryDTO",
+  input: DEFAULT_JSON,
+  output: "",
+  error: "",
+  copied: false,
+  useProperties: false
+};
+
+type GeneratorControlsProps = {
+  classNameValue: string;
+  input: string;
+  useProperties: boolean;
+  onClassNameChange: (value: string) => void;
+  onUsePropertiesChange: (value: boolean) => void;
+  onGenerate: () => void;
+  onLoadExample: () => void;
+  onClear: () => void;
+};
+
+function ApexDtoHeader() {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="rounded-xl bg-orange-100 p-3 text-orange-700">
+        <FileCode2 size={24} />
+      </div>
+
+      <div>
+        <h2 className="text-3xl font-bold text-gray-900">
+          Apex DTO Generator
+        </h2>
+
+        <p className="mt-1 text-gray-500">
+          Génère automatiquement des classes Apex à partir
+          d’un JSON.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function GeneratorControls({
+  classNameValue,
+  input,
+  useProperties,
+  onClassNameChange,
+  onUsePropertiesChange,
+  onGenerate,
+  onLoadExample,
+  onClear
+}: GeneratorControlsProps) {
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+        <div className="flex-1">
+          <label
+            htmlFor="className"
+            className="mb-2 block text-sm font-medium text-gray-700"
+          >
+            Nom de la classe Apex
+          </label>
+
+          <input
+            id="className"
+            type="text"
+            value={classNameValue}
+            onChange={(event) =>
+              onClassNameChange(event.target.value)
+            }
+            placeholder="CountryDTO"
+            className="w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm outline-none focus:border-orange-500"
+          />
+        </div>
+
+        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={useProperties}
+            onChange={(event) =>
+              onUsePropertiesChange(event.target.checked)
+            }
+            className="h-4 w-4 rounded border-gray-300"
+          />
+
+          Générer avec get / set
+        </label>
+
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={
+            !input.trim() || !classNameValue.trim()
+          }
+          className="flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-5 py-2 font-medium text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <WandSparkles size={17} />
+          Generate DTO
+        </button>
+
+        <button
+          type="button"
+          onClick={onLoadExample}
+          className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-100"
+        >
+          <Braces size={17} />
+          Example
+        </button>
+
+        <button
+          type="button"
+          onClick={onClear}
+          className="flex items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-2 font-medium text-red-700 transition hover:bg-red-50 hover:text-red-800"
+        >
+          <Trash2 size={17} />
+          Clear
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ErrorBanner({ error }: { error: string }) {
+  if (!error) {
+    return null;
+  }
+
+  return (
+    <div className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 p-4 font-mono text-sm text-red-700">
+      {error}
+    </div>
+  );
+}
+
+type CodeWorkspaceProps = {
+  classNameValue: string;
+  copied: boolean;
+  input: string;
+  inputSize: number;
+  output: string;
+  outputLines: number;
+  outputSize: number;
+  onCopyOutput: () => void;
+  onInputChange: (value: string) => void;
+};
+
+function CodeWorkspace({
+  classNameValue,
+  copied,
+  input,
+  inputSize,
+  output,
+  outputLines,
+  outputSize,
+  onCopyOutput,
+  onInputChange
+}: CodeWorkspaceProps) {
+  return (
+    <div className="grid gap-6 xl:grid-cols-2">
+      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+          <h3 className="font-semibold text-gray-900">
+            JSON Input
+          </h3>
+
+          <span className="text-xs text-gray-500">
+            {formatBytes(inputSize)}
+          </span>
+        </div>
+
+        <div className="p-5">
+          <textarea
+            value={input}
+            onChange={(event) =>
+              onInputChange(event.target.value)
+            }
+            className="min-h-[560px] w-full resize-y rounded-lg border border-gray-300 p-4 font-mono text-sm leading-6 text-gray-900 outline-none focus:border-orange-500"
+            placeholder={'{\n  "name": "France"\n}'}
+            spellCheck={false}
+          />
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+          <div>
+            <h3 className="font-semibold text-gray-900">
+              Apex Output
+            </h3>
+
+            {output && (
+              <p className="mt-1 text-xs text-gray-500">
+                {outputLines} lines •{" "}
+                {formatBytes(outputSize)}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onCopyOutput}
+            disabled={!output}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {copied ? (
+              <Check size={14} />
+            ) : (
+              <Clipboard size={14} />
+            )}
+
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+
+        <div className="p-5">
+          <pre className="min-h-[560px] max-h-[760px] overflow-auto whitespace-pre-wrap rounded-lg bg-gray-950 p-4 font-mono text-sm leading-6 text-gray-100">
+            {output ||
+              `public class ${toPascalCase(
+                classNameValue || "GeneratedDTO"
+              )} {\n    // Generated Apex code\n}`}
+          </pre>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function UsageSnippet({
+  classNameValue
+}: {
+  classNameValue: string;
+}) {
+  const normalizedClassName = toPascalCase(
+    classNameValue || "GeneratedDTO"
+  );
+
+  return (
+    <section className="rounded-xl border border-blue-200 bg-blue-50 p-5">
+      <div className="flex gap-3">
+        <Code2
+          size={20}
+          className="mt-0.5 shrink-0 text-blue-700"
+        />
+
+        <div>
+          <h3 className="font-semibold text-blue-900">
+            Utilisation dans Apex
+          </h3>
+
+          <pre className="mt-3 overflow-auto rounded-lg bg-blue-950 p-4 font-mono text-sm text-blue-50">
+{`${normalizedClassName} dto = (${normalizedClassName}) JSON.deserialize(
+    jsonResponse,
+    ${normalizedClassName}.class
+);`}
+          </pre>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function ApexDtoGenerator() {
-  const [className, setClassName] =
-    useState("CountryDTO");
+  const [state, setState] = useReducer(
+    mergeState<ApexDtoState>,
+    initialApexDtoState
+  );
 
-  const [input, setInput] =
-    useState(DEFAULT_JSON);
-
-  const [output, setOutput] = useState("");
-  const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [useProperties, setUseProperties] =
-    useState(false);
+  const {
+    className,
+    copied,
+    error,
+    input,
+    output,
+    useProperties
+  } = state;
 
   const inputSize = useMemo(
     () => new TextEncoder().encode(input).length,
@@ -517,20 +789,21 @@ export default function ApexDtoGenerator() {
   );
 
   function generateDto() {
-    setError("");
-    setCopied(false);
+    setState({ error: "", copied: false });
 
     if (!className.trim()) {
-      setOutput("");
-      setError(
-        "Le nom de la classe Apex est obligatoire."
-      );
+      setState({
+        output: "",
+        error: "Le nom de la classe Apex est obligatoire."
+      });
       return;
     }
 
     if (!input.trim()) {
-      setOutput("");
-      setError("Le contenu JSON est vide.");
+      setState({
+        output: "",
+        error: "Le contenu JSON est vide."
+      });
       return;
     }
 
@@ -558,16 +831,18 @@ export default function ApexDtoGenerator() {
         useProperties
       );
 
-      setClassName(normalizedClassName);
-      setOutput(apexCode);
+      setState({
+        className: normalizedClassName,
+        output: apexCode
+      });
     } catch (currentError) {
-      setOutput("");
-
-      setError(
-        currentError instanceof Error
-          ? currentError.message
-          : "Impossible de générer le DTO Apex."
-      );
+      setState({
+        output: "",
+        error:
+          currentError instanceof Error
+            ? currentError.message
+            : "Impossible de générer le DTO Apex."
+      });
     }
   }
 
@@ -578,220 +853,73 @@ export default function ApexDtoGenerator() {
 
     try {
       await navigator.clipboard.writeText(output);
-      setCopied(true);
+      setState({ copied: true });
 
       window.setTimeout(() => {
-        setCopied(false);
+        setState({ copied: false });
       }, 1600);
     } catch {
-      setError(
-        "Impossible de copier le code Apex."
-      );
+      setState({
+        error: "Impossible de copier le code Apex."
+      });
     }
   }
 
   function clearAll() {
-    setInput("");
-    setOutput("");
-    setError("");
-    setCopied(false);
+    setState({
+      input: "",
+      output: "",
+      error: "",
+      copied: false
+    });
   }
 
   function loadExample() {
-    setClassName("CountryDTO");
-    setInput(DEFAULT_JSON);
-    setOutput("");
-    setError("");
-    setCopied(false);
+    setState({
+      className: "CountryDTO",
+      input: DEFAULT_JSON,
+      output: "",
+      error: "",
+      copied: false
+    });
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-orange-100 p-3 text-orange-700">
-          <FileCode2 size={24} />
-        </div>
+      <ApexDtoHeader />
 
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">
-            Apex DTO Generator
-          </h2>
+      <GeneratorControls
+        classNameValue={className}
+        input={input}
+        useProperties={useProperties}
+        onClassNameChange={(value) =>
+          setState({ className: value })
+        }
+        onUsePropertiesChange={(value) =>
+          setState({ useProperties: value })
+        }
+        onGenerate={generateDto}
+        onLoadExample={loadExample}
+        onClear={clearAll}
+      />
 
-          <p className="mt-1 text-gray-500">
-            Génère automatiquement des classes Apex à
-            partir d’un JSON.
-          </p>
-        </div>
-      </div>
+      <ErrorBanner error={error} />
 
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-          <div className="flex-1">
-            <label
-              htmlFor="className"
-              className="mb-2 block text-sm font-medium text-gray-700"
-            >
-              Nom de la classe Apex
-            </label>
+      <CodeWorkspace
+        classNameValue={className}
+        copied={copied}
+        input={input}
+        inputSize={inputSize}
+        output={output}
+        outputLines={outputLines}
+        outputSize={outputSize}
+        onCopyOutput={() => void copyOutput()}
+        onInputChange={(value) =>
+          setState({ input: value, error: "" })
+        }
+      />
 
-            <input
-              id="className"
-              type="text"
-              value={className}
-              onChange={(event) =>
-                setClassName(event.target.value)
-              }
-              placeholder="CountryDTO"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm outline-none focus:border-orange-500"
-            />
-          </div>
-
-          <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={useProperties}
-              onChange={(event) =>
-                setUseProperties(event.target.checked)
-              }
-              className="h-4 w-4 rounded border-gray-300"
-            />
-
-            Générer avec get / set
-          </label>
-
-          <button
-            type="button"
-            onClick={generateDto}
-            disabled={
-              !input.trim() || !className.trim()
-            }
-            className="flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-5 py-2 font-medium text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <WandSparkles size={17} />
-            Generate DTO
-          </button>
-
-          <button
-            type="button"
-            onClick={loadExample}
-            className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-100"
-          >
-            <Braces size={17} />
-            Example
-          </button>
-
-          <button
-            type="button"
-            onClick={clearAll}
-            className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-red-50 hover:text-red-600"
-          >
-            <Trash2 size={17} />
-            Clear
-          </button>
-        </div>
-      </section>
-
-      {error && (
-        <div className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 p-4 font-mono text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-            <h3 className="font-semibold text-gray-900">
-              JSON Input
-            </h3>
-
-            <span className="text-xs text-gray-500">
-              {formatBytes(inputSize)}
-            </span>
-          </div>
-
-          <div className="p-5">
-            <textarea
-              value={input}
-              onChange={(event) => {
-                setInput(event.target.value);
-                setError("");
-              }}
-              className="min-h-[560px] w-full resize-y rounded-lg border border-gray-300 p-4 font-mono text-sm leading-6 text-gray-900 outline-none focus:border-orange-500"
-              placeholder={'{\n  "name": "France"\n}'}
-              spellCheck={false}
-            />
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
-            <div>
-              <h3 className="font-semibold text-gray-900">
-                Apex Output
-              </h3>
-
-              {output && (
-                <p className="mt-1 text-xs text-gray-500">
-                  {outputLines} lines •{" "}
-                  {formatBytes(outputSize)}
-                </p>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void copyOutput()}
-              disabled={!output}
-              className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {copied ? (
-                <Check size={14} />
-              ) : (
-                <Clipboard size={14} />
-              )}
-
-              {copied ? "Copied" : "Copy"}
-            </button>
-          </div>
-
-          <div className="p-5">
-            <pre className="min-h-[560px] max-h-[760px] overflow-auto whitespace-pre-wrap rounded-lg bg-gray-950 p-4 font-mono text-sm leading-6 text-gray-100">
-              {output ||
-                `public class ${toPascalCase(
-                  className || "GeneratedDTO"
-                )} {\n    // Generated Apex code\n}`}
-            </pre>
-          </div>
-        </section>
-      </div>
-
-      <section className="rounded-xl border border-blue-200 bg-blue-50 p-5">
-        <div className="flex gap-3">
-          <Code2
-            size={20}
-            className="mt-0.5 shrink-0 text-blue-700"
-          />
-
-          <div>
-            <h3 className="font-semibold text-blue-900">
-              Utilisation dans Apex
-            </h3>
-
-            <pre className="mt-3 overflow-auto rounded-lg bg-blue-950 p-4 font-mono text-sm text-blue-50">
-{`${toPascalCase(
-  className || "GeneratedDTO"
-)} dto = (${toPascalCase(
-  className || "GeneratedDTO"
-)}) JSON.deserialize(
-    jsonResponse,
-    ${toPascalCase(
-      className || "GeneratedDTO"
-    )}.class
-);`}
-            </pre>
-          </div>
-        </div>
-      </section>
+      <UsageSnippet classNameValue={className} />
     </div>
   );
 }

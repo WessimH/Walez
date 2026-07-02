@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useReducer } from "react";
 import {
   Braces,
   Check,
@@ -8,6 +8,7 @@ import {
   Trash2,
   WandSparkles
 } from "lucide-react";
+import { mergeState } from "../utils/state";
 
 const DEFAULT_JSON = `{
   "project": "Salesforce Integration Studio",
@@ -63,12 +64,29 @@ function getLineAndColumn(
   };
 }
 
-export default function JsonFormatter() {
-  const [input, setInput] = useState(DEFAULT_JSON);
-  const [output, setOutput] = useState("");
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [copied, setCopied] = useState(false);
+type JsonFormatterState = {
+  copied: boolean;
+  error: string;
+  input: string;
+  output: string;
+  successMessage: string;
+};
+
+const initialJsonFormatterState: JsonFormatterState = {
+  copied: false,
+  error: "",
+  input: DEFAULT_JSON,
+  output: "",
+  successMessage: ""
+};
+
+function useJsonFormatter() {
+  const [state, setState] = useReducer(
+    mergeState<JsonFormatterState>,
+    initialJsonFormatterState
+  );
+
+  const { copied, error, input, output, successMessage } = state;
 
   const inputStats = useMemo(() => {
     const bytes = new TextEncoder().encode(input).length;
@@ -91,8 +109,7 @@ export default function JsonFormatter() {
   }, [output]);
 
   function resetMessages() {
-    setError("");
-    setSuccessMessage("");
+    setState({ error: "", successMessage: "" });
   }
 
   function parseInput(): unknown {
@@ -104,26 +121,33 @@ export default function JsonFormatter() {
   }
 
   function handleJsonError(currentError: unknown) {
-    setOutput("");
-    setSuccessMessage("");
-
     if (!(currentError instanceof Error)) {
-      setError("Le JSON est invalide.");
+      setState({
+        output: "",
+        successMessage: "",
+        error: "Le JSON est invalide."
+      });
       return;
     }
 
     const position = extractJsonErrorPosition(currentError.message);
 
     if (position === null) {
-      setError(`JSON invalide : ${currentError.message}`);
+      setState({
+        output: "",
+        successMessage: "",
+        error: `JSON invalide : ${currentError.message}`
+      });
       return;
     }
 
     const location = getLineAndColumn(input, position);
 
-    setError(
-      `JSON invalide à la ligne ${location.line}, colonne ${location.column}.\n${currentError.message}`
-    );
+    setState({
+      output: "",
+      successMessage: "",
+      error: `JSON invalide à la ligne ${location.line}, colonne ${location.column}.\n${currentError.message}`
+    });
   }
 
   function formatJson() {
@@ -133,8 +157,10 @@ export default function JsonFormatter() {
       const parsedJson = parseInput();
       const formattedJson = JSON.stringify(parsedJson, null, 2);
 
-      setOutput(formattedJson);
-      setSuccessMessage("JSON formaté avec succès.");
+      setState({
+        output: formattedJson,
+        successMessage: "JSON formaté avec succès."
+      });
     } catch (currentError) {
       handleJsonError(currentError);
     }
@@ -147,8 +173,10 @@ export default function JsonFormatter() {
       const parsedJson = parseInput();
       const minifiedJson = JSON.stringify(parsedJson);
 
-      setOutput(minifiedJson);
-      setSuccessMessage("JSON minifié avec succès.");
+      setState({
+        output: minifiedJson,
+        successMessage: "JSON minifié avec succès."
+      });
     } catch (currentError) {
       handleJsonError(currentError);
     }
@@ -160,8 +188,10 @@ export default function JsonFormatter() {
     try {
       parseInput();
 
-      setOutput("");
-      setSuccessMessage("Le JSON est valide.");
+      setState({
+        output: "",
+        successMessage: "Le JSON est valide."
+      });
     } catch (currentError) {
       handleJsonError(currentError);
     }
@@ -175,30 +205,80 @@ export default function JsonFormatter() {
     try {
       await navigator.clipboard.writeText(output);
 
-      setCopied(true);
+      setState({ copied: true });
 
       window.setTimeout(() => {
-        setCopied(false);
+        setState({ copied: false });
       }, 1600);
     } catch {
-      setError("Impossible de copier le résultat.");
+      setState({
+        error: "Impossible de copier le résultat."
+      });
     }
   }
 
   function clearAll() {
-    setInput("");
-    setOutput("");
-    setError("");
-    setSuccessMessage("");
-    setCopied(false);
+    setState({
+      input: "",
+      output: "",
+      error: "",
+      successMessage: "",
+      copied: false
+    });
   }
 
   function loadExample() {
-    setInput(DEFAULT_JSON);
-    setOutput("");
-    setError("");
-    setSuccessMessage("");
+    setState({
+      input: DEFAULT_JSON,
+      output: "",
+      error: "",
+      successMessage: ""
+    });
   }
+
+  function changeInput(value: string) {
+    setState({
+      input: value,
+      error: "",
+      successMessage: ""
+    });
+  }
+
+  return {
+    changeInput,
+    clearAll,
+    copied,
+    copyOutput,
+    error,
+    formatJson,
+    input,
+    inputStats,
+    loadExample,
+    minifyJson,
+    output,
+    outputStats,
+    successMessage,
+    validateJson
+  };
+}
+
+export default function JsonFormatter() {
+  const {
+    changeInput,
+    clearAll,
+    copied,
+    copyOutput,
+    error,
+    formatJson,
+    input,
+    inputStats,
+    loadExample,
+    minifyJson,
+    output,
+    outputStats,
+    successMessage,
+    validateJson
+  } = useJsonFormatter();
 
   return (
     <div className="space-y-6">
@@ -263,7 +343,7 @@ export default function JsonFormatter() {
         <button
           type="button"
           onClick={clearAll}
-          className="ml-auto flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition hover:bg-red-50 hover:text-red-600"
+          className="ml-auto flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 font-medium text-red-700 transition hover:bg-red-50 hover:text-red-800"
         >
           <Trash2 size={17} />
           Clear
@@ -300,11 +380,9 @@ export default function JsonFormatter() {
           <div className="p-5">
             <textarea
               value={input}
-              onChange={(event) => {
-                setInput(event.target.value);
-                setError("");
-                setSuccessMessage("");
-              }}
+              onChange={(event) =>
+                changeInput(event.target.value)
+              }
               className="min-h-[520px] w-full resize-y rounded-lg border border-gray-300 p-4 font-mono text-sm leading-6 text-gray-900 outline-none focus:border-purple-500"
               placeholder={'{\n  "key": "value"\n}'}
               spellCheck={false}
