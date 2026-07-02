@@ -40,6 +40,7 @@ Objectifs principaux :
 | Named Credentials Explorer  | Lecture des configurations Named Credentials     | Aide au diagnostic des intégrations sécurisées              |
 | Platform Events Explorer    | Inspection et publication de Platform Events     | Facilite le travail sur les architectures event-driven      |
 | Integration Flow Visualizer | Visualisation interactive des flux d'intégration | Supervise les étapes, statuts, durées et erreurs runtime    |
+| Claude Assistant            | Assistant IA contextuel                          | Aide à comprendre la page active sans exposer de secrets    |
 | Settings                    | Préférences locales de l'interface               | Ajuste le comportement sans toucher au backend              |
 
 ## Architecture
@@ -56,7 +57,7 @@ Flux d'exécution simplifié :
 React UI Bundle
   -> Salesforce Platform SDK
   -> Apex REST Controllers
-  -> Metadata / SOQL / Callouts / Runtime Logs
+  -> Metadata / SOQL / Callouts / Runtime Logs / Claude API
 ```
 
 Principes de conception :
@@ -64,6 +65,7 @@ Principes de conception :
 - le frontend gère l'interface, l'état local et la présentation ;
 - les appels sensibles passent par Apex et le Salesforce Platform SDK ;
 - les Named Credentials restent la source de vérité pour les endpoints externes ;
+- l'assistant IA appelle Claude uniquement via Apex et un Named Credential ;
 - les visualisations de flux consomment un `diagramJson` et des données runtime ;
 - les composants React volumineux sont découpés en hooks et sous-composants pour rester maintenables.
 
@@ -186,6 +188,36 @@ Règles à respecter :
 
 Le frontend peut afficher des informations de configuration utiles, mais il ne doit pas devenir une source d'exposition de secrets.
 
+### Assistant IA Claude
+
+L'assistant IA est exposé par une étoile flottante dans l'interface. Au clic, une popup permet de poser une question à Claude avec un contexte limité à la page active.
+
+Configuration Salesforce attendue :
+
+```text
+Named Credential: IntegrationStudioClaude
+Endpoint: https://api.anthropic.com
+Auth: API key Anthropic injectée côté Salesforce
+Path appelé par Apex: /v1/messages
+```
+
+Le frontend n'appelle jamais Claude directement. Il appelle seulement :
+
+```text
+/services/apexrest/integration-studio/assistant
+```
+
+Garde-fous anti prompt injection :
+
+- le contexte envoyé à Claude est limité à la route, l'outil actif et les capacités connues de la page ;
+- aucun contenu DOM brut, token, cookie ou secret n'est envoyé par React ;
+- Apex tronque le contexte et la question pour éviter les payloads excessifs ;
+- Apex masque les clés sensibles comme `token`, `secret`, `password`, `authorization`, `cookie` ou `apiKey` ;
+- le prompt système indique explicitement à Claude que le contexte et la question sont des données non fiables ;
+- les demandes explicites d'extraction de secrets sont refusées localement avant tout callout.
+
+Important : aucun système LLM ne peut garantir une protection absolue contre toutes les formes de prompt injection. Cette intégration réduit l'exposition en ne donnant pas d'outils d'action à Claude, en limitant le contexte et en gardant les secrets côté Salesforce.
+
 ## Structure du projet
 
 ```text
@@ -208,6 +240,7 @@ Contrôleurs Apex reliés à l'application :
 
 ```text
 force-app/main/default/classes/IntegrationStudioApiController.cls
+force-app/main/default/classes/IntegrationStudioAssistantCtrl.cls
 force-app/main/default/classes/IntegrationStudioNamedCredCtrl.cls
 force-app/main/default/classes/IntegrationStudioEventCtrl.cls
 force-app/main/default/classes/IntegrationStudioSoqlController.cls
