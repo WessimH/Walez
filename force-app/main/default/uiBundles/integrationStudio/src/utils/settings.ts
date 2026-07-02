@@ -12,10 +12,10 @@ export type ApplicationSettings = {
   compactMode: boolean;
 };
 
-export const SETTINGS_STORAGE_KEY =
+const SETTINGS_STORAGE_KEY =
   "salesforce-integration-studio-settings";
 
-export const DEFAULT_SETTINGS: ApplicationSettings = {
+const DEFAULT_SETTINGS: ApplicationSettings = {
   theme: "light",
   salesforceApiVersion: "v66.0",
   defaultSoqlLimit: 100,

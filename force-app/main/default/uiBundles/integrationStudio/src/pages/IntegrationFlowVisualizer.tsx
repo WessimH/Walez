@@ -182,6 +182,13 @@ const EMPTY_VALIDATION: DiagramValidationResult = {
   warnings: []
 };
 
+const VALID_RUNTIME_STATUSES = new Set([
+  "success",
+  "error",
+  "running",
+  "unknown"
+]);
+
 const INITIAL_INTEGRATION_FLOW_STATE: IntegrationFlowState = {
   duration: null,
   error: "",
@@ -199,6 +206,11 @@ const INITIAL_INTEGRATION_FLOW_STATE: IntegrationFlowState = {
 const nodeTypes = {
   futuristic: FuturisticFlowNode
 };
+
+const RUNTIME_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
+  dateStyle: "short",
+  timeStyle: "medium"
+});
 
 function extractErrorMessage(
   rawResponse: string,
@@ -419,19 +431,18 @@ function validateDiagram(
 
     if (
       edge.data?.status &&
-      !["success", "error", "running", "unknown"].includes(
-        edge.data.status
-      )
+      !VALID_RUNTIME_STATUSES.has(edge.data.status)
     ) {
       warnings.push(
         `Le statut d’exécution du flux ${edgeId} est inconnu.`
       );
     }
 
+    const durationMs = edge.data?.durationMs;
+
     if (
-      edge.data?.durationMs !== undefined &&
-      (!Number.isFinite(edge.data.durationMs) ||
-        edge.data.durationMs < 0)
+      durationMs !== undefined &&
+      (!Number.isFinite(durationMs) || durationMs < 0)
     ) {
       warnings.push(
         `La durée d’exécution du flux ${edgeId} est invalide.`
@@ -588,10 +599,7 @@ function formatRuntimeDate(value?: string): string {
     return value;
   }
 
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "short",
-    timeStyle: "medium"
-  }).format(parsedDate);
+  return RUNTIME_DATE_FORMATTER.format(parsedDate);
 }
 
 function formatDuration(durationMs?: number): string {

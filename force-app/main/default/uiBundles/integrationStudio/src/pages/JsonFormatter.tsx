@@ -383,6 +383,7 @@ export default function JsonFormatter() {
               onChange={(event) =>
                 changeInput(event.target.value)
               }
+              aria-label="JSON à formater"
               className="min-h-[520px] w-full resize-y rounded-lg border border-gray-300 p-4 font-mono text-sm leading-6 text-gray-900 outline-none focus:border-purple-500"
               placeholder={'{\n  "key": "value"\n}'}
               spellCheck={false}
@@ -409,6 +410,7 @@ export default function JsonFormatter() {
               type="button"
               onClick={() => void copyOutput()}
               disabled={!output}
+              aria-label="Copier le JSON formaté"
               className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {copied ? (

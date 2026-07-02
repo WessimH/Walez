@@ -673,6 +673,7 @@ function CodeWorkspace({
             onChange={(event) =>
               onInputChange(event.target.value)
             }
+            aria-label="JSON source pour générer le DTO Apex"
             className="min-h-[560px] w-full resize-y rounded-lg border border-gray-300 p-4 font-mono text-sm leading-6 text-gray-900 outline-none focus:border-orange-500"
             placeholder={'{\n  "name": "France"\n}'}
             spellCheck={false}
@@ -699,6 +700,7 @@ function CodeWorkspace({
             type="button"
             onClick={onCopyOutput}
             disabled={!output}
+            aria-label="Copier le DTO Apex généré"
             className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {copied ? (

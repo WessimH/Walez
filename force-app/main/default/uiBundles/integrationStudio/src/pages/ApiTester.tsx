@@ -135,6 +135,7 @@ function RequestBar({
           onChange={(event) =>
             onMethodChange(event.target.value)
           }
+          aria-label="Méthode HTTP"
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-semibold text-gray-900 outline-none focus:border-blue-500"
         >
           <option value="GET">GET</option>
@@ -155,6 +156,7 @@ function RequestBar({
               onSend();
             }
           }}
+          aria-label="Endpoint de la requête"
           className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm text-gray-900 outline-none focus:border-blue-500"
           placeholder="/countries/v5/names.common/France"
         />
@@ -293,6 +295,7 @@ function RequestPanel({
                       event.target.checked
                     )
                   }
+                  aria-label={`Activer le header ${header.key || header.id}`}
                   className="h-4 w-4 rounded border-gray-300"
                 />
 
@@ -306,6 +309,7 @@ function RequestPanel({
                       event.target.value
                     )
                   }
+                  aria-label={`Nom du header ${header.id}`}
                   placeholder="Header"
                   className="min-w-0 rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm outline-none focus:border-blue-500"
                 />
@@ -320,6 +324,7 @@ function RequestPanel({
                       event.target.value
                     )
                   }
+                  aria-label={`Valeur du header ${header.id}`}
                   placeholder="Value"
                   className="min-w-0 rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm outline-none focus:border-blue-500"
                 />
@@ -327,6 +332,7 @@ function RequestPanel({
                 <button
                   type="button"
                   onClick={() => onRemoveHeader(header.id)}
+                  aria-label={`Supprimer le header ${header.key || header.id}`}
                   className="rounded-lg p-2 text-red-500 transition hover:bg-red-50 hover:text-red-700"
                   title="Supprimer le header"
                 >
@@ -367,6 +373,7 @@ function RequestPanel({
               onChange={(event) =>
                 onRequestBodyChange(event.target.value)
               }
+              aria-label="Corps JSON de la requête"
               className="min-h-80 w-full resize-y rounded-lg border border-gray-300 p-4 font-mono text-sm text-gray-900 outline-none focus:border-blue-500"
               placeholder={'{\n  "key": "value"\n}'}
               spellCheck={false}
@@ -438,6 +445,7 @@ function ResponsePanel({
             type="button"
             onClick={onCopyResponse}
             disabled={!response}
+            aria-label="Copier la réponse"
             className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {copiedAction === "response" ? (
@@ -452,6 +460,7 @@ function ResponsePanel({
           <button
             type="button"
             onClick={onClearResponse}
+            aria-label="Vider la réponse"
             className="flex items-center gap-2 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50 hover:text-red-800"
           >
             <Trash2 size={14} />

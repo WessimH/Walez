@@ -201,9 +201,15 @@ function formatFilterValue(
   ) {
     const values = value
       .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((item) => `'${escapeSoqlString(item)}'`);
+      .flatMap((item) => {
+        const trimmedValue = item.trim();
+
+        if (!trimmedValue) {
+          return [];
+        }
+
+        return [`'${escapeSoqlString(trimmedValue)}'`];
+      });
 
     return `(${values.join(", ")})`;
   }
@@ -450,6 +456,7 @@ function FieldSelector({
               onAddCustomField();
             }
           }}
+          aria-label="Ajouter un champ personnalisé"
           placeholder="Mon_champ__c ou Account.Name"
           className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm outline-none focus:border-blue-500"
         />
@@ -502,6 +509,7 @@ function FiltersSection({
         <button
           type="button"
           onClick={onAddFilter}
+            aria-label="Ajouter un filtre"
           className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
         >
           <Plus size={16} />
@@ -535,6 +543,7 @@ function FiltersSection({
                     event.target.value
                   )
                 }
+                  aria-label={`Connecteur du filtre ${filter.id}`}
                 className="rounded-lg border border-gray-300 px-2 py-2 text-sm outline-none focus:border-blue-500"
               >
                 <option value="AND">AND</option>
@@ -553,13 +562,16 @@ function FiltersSection({
                 )
               }
               list={`fields-${filter.id}`}
+                aria-label={`Champ du filtre ${filter.id}`}
               placeholder="Field"
               className="min-w-0 rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm outline-none focus:border-blue-500"
             />
 
             <datalist id={`fields-${filter.id}`}>
               {allAvailableFields.map((field) => (
-                <option key={field} value={field} />
+                  <option key={field} value={field}>
+                    {field}
+                  </option>
               ))}
             </datalist>
 
@@ -572,6 +584,7 @@ function FiltersSection({
                   event.target.value
                 )
               }
+                aria-label={`Opérateur du filtre ${filter.id}`}
               className="rounded-lg border border-gray-300 px-2 py-2 font-mono text-sm outline-none focus:border-blue-500"
             >
               {OPERATORS.map((operator) => (
@@ -591,6 +604,7 @@ function FiltersSection({
                   event.target.value
                 )
               }
+                aria-label={`Valeur du filtre ${filter.id}`}
               placeholder={
                 filter.operator === "IN" ||
                 filter.operator === "NOT IN"

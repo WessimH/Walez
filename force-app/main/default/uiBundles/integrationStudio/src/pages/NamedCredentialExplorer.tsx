@@ -27,7 +27,7 @@ type NamedCredentialItem = {
 
 type DisplayMode = "cards" | "json";
 
-const NAMED_CREDENTIAL_ENDPOINT =
+const INTEGRATION_STUDIO_NC_ENDPOINT =
   "/services/apexrest/integration-studio/named-credentials";
 
 function getStringValue(
@@ -114,13 +114,13 @@ function normalizeCredential(
   if (Array.isArray(rawExternalCredentials)) {
     const externalCredentialNames =
       rawExternalCredentials
-        .map((item) => {
+        .flatMap((item) => {
           if (
             typeof item === "object" &&
             item !== null &&
             !Array.isArray(item)
           ) {
-            return getStringValue(
+            const name = getStringValue(
               item as RawCredential,
               [
                 "developerName",
@@ -129,15 +129,16 @@ function normalizeCredential(
                 "label"
               ]
             );
+
+            return name ? [name] : [];
           }
 
           if (typeof item === "string") {
-            return item;
+            return item ? [item] : [];
           }
 
-          return "";
-        })
-        .filter(Boolean);
+          return [];
+        });
 
     if (externalCredentialNames.length > 0) {
       externalCredential =
@@ -321,6 +322,7 @@ function NamedCredentialToolbar({
             onChange={(event) =>
               onSearchChange(event.target.value)
             }
+            aria-label="Rechercher une Named Credential"
             placeholder="Rechercher par nom, endpoint ou type..."
             className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 text-sm outline-none focus:border-emerald-500"
           />
@@ -463,6 +465,7 @@ function CredentialCards({
               <button
                 type="button"
                 onClick={() => onCopyName(credential.name)}
+                aria-label={`Copier le nom technique de ${credential.label}`}
                 className="shrink-0 rounded-lg border border-gray-300 p-2 text-gray-500 transition hover:bg-white hover:text-emerald-700"
                 title="Copier le nom technique"
               >
@@ -588,7 +591,7 @@ export default function NamedCredentialExplorer() {
       }
 
       const response = await dataSdk.fetch(
-        NAMED_CREDENTIAL_ENDPOINT,
+        INTEGRATION_STUDIO_NC_ENDPOINT,
         {
           method: "GET",
           headers: {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useReducer } from "react";
 import {
   Bot,
   LoaderCircle,
@@ -20,6 +20,23 @@ type ChatMessage = {
   role: "assistant" | "user";
   text: string;
 };
+
+type AssistantState = {
+  open: boolean;
+  question: string;
+  loading: boolean;
+  error: string;
+  messages: ChatMessage[];
+};
+
+type AssistantAction =
+  | { type: "open" }
+  | { type: "close" }
+  | { type: "setQuestion"; question: string }
+  | { type: "setError"; error: string }
+  | { type: "setLoading"; loading: boolean }
+  | { type: "appendMessage"; message: ChatMessage }
+  | { type: "appendAssistantMessage"; text: string };
 
 type PageContextConfig = {
   capabilities: string[];
@@ -160,35 +177,100 @@ function buildAssistantContext(
   };
 }
 
+function createInitialAssistantState(): AssistantState {
+  return {
+    open: false,
+    question: "",
+    loading: false,
+    error: "",
+    messages: [
+      {
+        id: 1,
+        role: "assistant",
+        text:
+          "Salut, je suis l’assistant IA d’Integration Studio. Je prends en compte la page courante, sans envoyer de secrets ni le contenu complet de l’écran."
+      }
+    ]
+  };
+}
+
+function assistantReducer(
+  state: AssistantState,
+  action: AssistantAction
+): AssistantState {
+  switch (action.type) {
+    case "open":
+      return {
+        ...state,
+        open: true
+      };
+
+    case "close":
+      return {
+        ...state,
+        open: false
+      };
+
+    case "setQuestion":
+      return {
+        ...state,
+        question: action.question
+      };
+
+    case "setError":
+      return {
+        ...state,
+        error: action.error
+      };
+
+    case "setLoading":
+      return {
+        ...state,
+        loading: action.loading
+      };
+
+    case "appendMessage":
+      return {
+        ...state,
+        messages: [...state.messages, action.message]
+      };
+
+    case "appendAssistantMessage":
+      return {
+        ...state,
+        messages: [
+          ...state.messages,
+          {
+            id: Date.now() + 1,
+            role: "assistant",
+            text: action.text
+          }
+        ]
+      };
+
+    default:
+      return state;
+  }
+}
+
 export default function AiAssistantLauncher() {
   const location = useLocation();
   const matches = useMatches();
-  const [open, setOpen] = useState(false);
-  const [question, setQuestion] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 1,
-      role: "assistant",
-      text:
-        "Salut, je suis l’assistant IA d’Integration Studio. Je prends en compte la page courante, sans envoyer de secrets ni le contenu complet de l’écran."
-    }
-  ]);
+  const [state, dispatch] = useReducer(
+    assistantReducer,
+    undefined,
+    createInitialAssistantState
+  );
 
-  const context = useMemo(
-    () =>
-      buildAssistantContext(
-        location.pathname,
-        getRouteLabel(matches)
-      ),
-    [location.pathname, matches]
+  const context = buildAssistantContext(
+    location.pathname,
+    getRouteLabel(matches)
   );
 
   async function sendQuestion() {
-    const trimmedQuestion = question.trim();
+    const trimmedQuestion = state.question.trim();
 
-    if (!trimmedQuestion || loading) {
+    if (!trimmedQuestion || state.loading) {
       return;
     }
 
@@ -198,36 +280,28 @@ export default function AiAssistantLauncher() {
       text: trimmedQuestion
     };
 
-    setMessages((currentMessages) => [
-      ...currentMessages,
-      userMessage
-    ]);
-    setQuestion("");
-    setError("");
-    setLoading(true);
+    dispatch({ type: "appendMessage", message: userMessage });
+    dispatch({ type: "setQuestion", question: "" });
+    dispatch({ type: "setError", error: "" });
+    dispatch({ type: "setLoading", loading: true });
 
     try {
-      const result = await askAssistant(
-        trimmedQuestion,
-        context
-      );
+      const result = await askAssistant(trimmedQuestion, context);
 
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        {
-          id: Date.now() + 1,
-          role: "assistant",
-          text: result.answer
-        }
-      ]);
+      dispatch({
+        type: "appendAssistantMessage",
+        text: result.answer
+      });
     } catch (currentError) {
-      setError(
-        currentError instanceof Error
-          ? currentError.message
-          : "Impossible de contacter l’assistant IA."
-      );
+      dispatch({
+        type: "setError",
+        error:
+          currentError instanceof Error
+            ? currentError.message
+            : "Impossible de contacter l’assistant IA."
+      });
     } finally {
-      setLoading(false);
+      dispatch({ type: "setLoading", loading: false });
     }
   }
 
@@ -235,7 +309,7 @@ export default function AiAssistantLauncher() {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => dispatch({ type: "open" })}
         className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-gradient-to-br from-blue-500 via-sky-400 to-amber-300 text-white shadow-2xl shadow-blue-500/30 transition duration-300 hover:-translate-y-1 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-200"
         aria-label="Ouvrir l'assistant IA"
       >
@@ -246,7 +320,7 @@ export default function AiAssistantLauncher() {
         />
       </button>
 
-      {open && (
+      {state.open && (
         <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-950/30 p-4 sm:p-6">
           <section className="flex h-[82vh] w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl shadow-slate-900/20">
             <header className="relative overflow-hidden border-b border-blue-100 bg-gradient-to-br from-white via-blue-50 to-amber-50 px-5 py-4">
@@ -276,7 +350,7 @@ export default function AiAssistantLauncher() {
 
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
+                  onClick={() => dispatch({ type: "close" })}
                   className="rounded-full p-2 text-slate-500 transition hover:bg-white/70 hover:text-slate-900"
                   aria-label="Fermer l'assistant IA"
                 >
@@ -309,7 +383,7 @@ export default function AiAssistantLauncher() {
             </div>
 
             <div className="flex-1 space-y-4 overflow-auto bg-slate-50 px-5 py-4">
-              {messages.map((message) => (
+              {state.messages.map((message) => (
                 <article
                   key={message.id}
                   className={`flex gap-3 ${
@@ -342,7 +416,7 @@ export default function AiAssistantLauncher() {
                 </article>
               ))}
 
-              {loading && (
+              {state.loading && (
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <LoaderCircle
                     size={16}
@@ -352,9 +426,9 @@ export default function AiAssistantLauncher() {
                 </div>
               )}
 
-              {error && (
+              {state.error && (
                 <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {error}
+                  {state.error}
                 </div>
               )}
             </div>
@@ -362,9 +436,12 @@ export default function AiAssistantLauncher() {
             <footer className="border-t border-slate-100 bg-white p-4">
               <div className="flex gap-2">
                 <textarea
-                  value={question}
+                  value={state.question}
                   onChange={(event) =>
-                    setQuestion(event.target.value)
+                    dispatch({
+                      type: "setQuestion",
+                      question: event.target.value
+                    })
                   }
                   aria-label="Question pour l'assistant IA"
                   onKeyDown={(event) => {
@@ -382,11 +459,11 @@ export default function AiAssistantLauncher() {
                 <button
                   type="button"
                   onClick={() => void sendQuestion()}
-                  disabled={!question.trim() || loading}
+                  disabled={!state.question.trim() || state.loading}
                   className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label="Envoyer la question à l'assistant IA"
                 >
-                  {loading ? (
+                  {state.loading ? (
                     <LoaderCircle
                       size={18}
                       className="animate-spin"
@@ -407,3 +484,4 @@ export default function AiAssistantLauncher() {
     </>
   );
 }
+
