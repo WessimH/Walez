@@ -9951,7 +9951,7 @@ function r1(e) {
   }
   return { query: r, mutate: s => a1(e, s) };
 }
-const $_ = '65.0';
+const $_ = '66.0';
 function i1(e = $_) {
   return `/services/data/v${e}`;
 }
@@ -10577,10 +10577,10 @@ function N3() {
       r &&
         d.jsx('div', {
           className:
-            'fixed inset-0 z-50 flex items-end justify-end bg-slate-950/30 p-4 backdrop-blur-sm sm:p-6',
+            'fixed inset-0 z-50 flex items-end justify-end bg-slate-950/30 p-4 sm:p-6',
           children: d.jsxs('section', {
             className:
-              'flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl shadow-slate-900/20',
+              'flex h-[82vh] w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl shadow-slate-900/20',
             children: [
               d.jsxs('header', {
                 className:

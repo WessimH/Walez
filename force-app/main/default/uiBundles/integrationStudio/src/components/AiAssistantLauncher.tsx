@@ -247,8 +247,8 @@ export default function AiAssistantLauncher() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-950/30 p-4 backdrop-blur-sm sm:p-6">
-          <section className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl shadow-slate-900/20">
+        <div className="fixed inset-0 z-50 flex items-end justify-end bg-slate-950/30 p-4 sm:p-6">
+          <section className="flex h-[82vh] w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl shadow-slate-900/20">
             <header className="relative overflow-hidden border-b border-blue-100 bg-gradient-to-br from-white via-blue-50 to-amber-50 px-5 py-4">
               <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-amber-300/40 blur-3xl" />
               <div className="pointer-events-none absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-blue-300/40 blur-3xl" />
